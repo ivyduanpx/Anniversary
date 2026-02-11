@@ -1,0 +1,813 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>瑞瑞和鑫鑫 💕</title>
+    <!-- 爱心 Favicon -->
+    <link rel="icon"
+        href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💕</text></svg>">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@700&family=Noto+Serif+SC:wght@400;600&family=Parisienne&family=Great+Vibes&family=La+Belle+Aurore&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+        integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+        integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+
+    <style>
+        /* --- 基础设置 --- */
+        body {
+            font-family: 'Noto Serif SC', serif;
+            color: #4a4a4a;
+            overflow-x: hidden;
+            cursor: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="%23ff6b81"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>') 12 12, auto;
+        }
+
+        .font-hand {
+            font-family: 'Dancing Script', cursive;
+        }
+
+        .font-art {
+            font-family: 'Great Vibes', cursive;
+        }
+
+        .font-note {
+            font-family: 'La Belle Aurore', cursive;
+        }
+
+        /* 手写笔记字体 */
+
+        /* --- 0. 新增特效：文字流光 (修复截断问题 v2) --- */
+        .text-gradient-flow {
+            /* 改为 白->浅金->白，对比度更高 */
+            background: linear-gradient(to right, #ffffff 0%, #fef3c7 50%, #ffffff 100%);
+            background-size: 200% auto;
+            color: transparent;
+            -webkit-background-clip: text;
+            background-clip: text;
+            animation: flowText 3s linear infinite;
+            /* 加上深色文字阴影 */
+            filter: drop-shadow(0 2px 4px rgba(236, 72, 153, 0.5));
+            /* 暴力修复：花体字上下左右都需要空间 */
+            line-height: 1.6;
+            padding: 0.2em 0.1em;
+            /* 确保背景覆盖到 padding 区域 */
+            background-origin: border-box;
+        }
+
+        @keyframes flowText {
+            to {
+                background-position: 200% center;
+            }
+        }
+
+        /* --- 增强：照片卡片微倾斜与悬浮 --- */
+        .photo-frame {
+            transform: rotate(-2deg);
+            transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+        }
+
+        .travel-card:hover .photo-frame {
+            transform: rotate(0deg) scale(1.02) translateY(-5px);
+            box-shadow: 0 20px 30px rgba(236, 72, 153, 0.3);
+            /* 粉色光晕 */
+        }
+
+        /* --- 1. 动态梦幻背景 --- */
+        .animated-bg {
+            background: linear-gradient(-45deg, #ff9a9e, #fad0c4, #ffd1ff, #fbc2eb);
+            background-size: 400% 400%;
+            animation: gradientBG 15s ease infinite;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -10;
+        }
+
+        @keyframes gradientBG {
+            0% {
+                background-position: 0% 50%;
+            }
+
+            50% {
+                background-position: 100% 50%;
+            }
+
+            100% {
+                background-position: 0% 50%;
+            }
+        }
+
+        /* --- 2. 极简登录层 --- */
+        #login-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            /* 深度磨砂玻璃效果 */
+            background: rgba(255, 255, 255, 0.4);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            z-index: 10000;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            transition: all 1.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .login-box {
+            background: rgba(255, 255, 255, 0.6);
+            padding: 3rem;
+            border-radius: 2rem;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.8);
+            transform: scale(1);
+            transition: transform 0.5s;
+        }
+
+        /* 呼吸灯光晕 */
+        .glow-input {
+            box-shadow: 0 0 15px rgba(236, 72, 153, 0.3);
+            animation: breathe 3s infinite ease-in-out;
+        }
+
+        @keyframes breathe {
+
+            0%,
+            100% {
+                box-shadow: 0 0 15px rgba(236, 72, 153, 0.3);
+            }
+
+            50% {
+                box-shadow: 0 0 30px rgba(236, 72, 153, 0.6);
+            }
+        }
+
+        /* --- 3. 时间轴旅行手账 --- */
+        .timeline-container {
+            position: relative;
+            padding: 20px 0;
+        }
+
+        /* 垂直虚线 */
+        .timeline-line {
+            position: absolute;
+            left: 50%;
+            top: 0;
+            bottom: 0;
+            width: 2px;
+            background-image: linear-gradient(to bottom, #ec4899 50%, transparent 50%);
+            background-size: 2px 20px;
+            transform: translateX(-1px);
+            z-index: 0;
+        }
+
+        /* 飞机图标动画 */
+        .plane-icon {
+            position: sticky;
+            top: 50vh;
+            left: 50%;
+            transform: translateX(-50%) rotate(180deg);
+            z-index: 5;
+            color: #ec4899;
+            font-size: 24px;
+            background: #fff0f5;
+            padding: 5px;
+            border-radius: 50%;
+        }
+
+        /* 手账卡片 (Ticket Style) */
+        .travel-card {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+            position: relative;
+            overflow: hidden;
+            transition: transform 0.3s ease;
+            margin-bottom: 3rem;
+            width: 100%;
+        }
+
+        .travel-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.12);
+        }
+
+        /* 锯齿边缘效果 */
+        .ticket-stub {
+            border-right: 2px dashed #e5e7eb;
+            position: relative;
+        }
+
+        .ticket-stub::after {
+            content: '';
+            position: absolute;
+            right: -10px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 20px;
+            height: 20px;
+            background: #fdfbf7;
+            /* 与背景色一致 */
+            border-radius: 50%;
+            box-shadow: inset 2px 0 5px rgba(0, 0, 0, 0.05);
+        }
+
+        /* --- 5. 鼠标爱心拖尾特效 --- */
+        .heart-trail {
+            position: fixed;
+            pointer-events: none;
+            z-index: 9999;
+            transform: translate(-50%, -50%);
+            animation: floatHeart 1s ease-out forwards;
+        }
+
+        @keyframes floatHeart {
+            0% {
+                transform: translate(-50%, -50%) scale(1);
+                opacity: 0.8;
+            }
+
+            100% {
+                transform: translate(-50%, -150%) scale(0);
+                opacity: 0;
+            }
+        }
+
+        /* --- 4. 地图 (艺术化改造) --- */
+        #map {
+            height: 450px;
+            width: 100%;
+            border-radius: 1rem;
+            z-index: 1;
+            background: transparent;
+            /* 边缘羽化，让地图像云一样浮现 */
+            -webkit-mask-image: radial-gradient(circle at center, black 60%, transparent 100%);
+            mask-image: radial-gradient(circle at center, black 60%, transparent 100%);
+        }
+
+        /* 滤镜魔法 (微调版)：清晰度回归，保留淡淡粉调 */
+        .leaflet-tile-pane {
+            /* 
+               grayscale: 100% (黑白打底)
+               sepia: 10% (淡淡怀旧黄)
+               hue-rotate: 310deg (偏向紫粉色)
+               contrast: 1.1 (加对比度，让字变清晰)
+               brightness: 1.02 (稍微提亮一点点，不要太白)
+            */
+            filter: grayscale(100%) sepia(10%) hue-rotate(310deg) contrast(1.1) brightness(1.02);
+            opacity: 0.8;
+            /* 稍微透一点背景色出来 */
+        }
+
+        /* 呼吸光圈点 (颜色加深: #be185d) */
+        .pulse-icon {
+            background: #be185d;
+            border: 2px solid #fff;
+            border-radius: 50%;
+            box-shadow: 0 0 0 0 rgba(190, 24, 93, 0.7);
+            animation: pulse-pink 2s infinite;
+        }
+
+        @keyframes pulse-pink {
+            0% {
+                transform: scale(0.95);
+                box-shadow: 0 0 0 0 rgba(190, 24, 93, 0.7);
+            }
+
+            70% {
+                transform: scale(1);
+                box-shadow: 0 0 0 10px rgba(190, 24, 93, 0);
+            }
+
+            100% {
+                transform: scale(0.95);
+                box-shadow: 0 0 0 0 rgba(190, 24, 93, 0);
+            }
+        }
+
+        /* 城市标签样式 */
+        .city-label {
+            background: rgba(255, 255, 255, 0.9) !important;
+            backdrop-filter: blur(4px);
+            border: none !important;
+            border-radius: 20px !important;
+            padding: 4px 10px !important;
+            font-size: 11px !important;
+            font-weight: 600 !important;
+            color: #be185d !important;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1) !important;
+            white-space: nowrap;
+        }
+
+        .city-label::before {
+            display: none !important;
+            /* 隐藏默认的小箭头 */
+        }
+
+        /* --- 通用动画 --- */
+        .shake {
+            animation: shake 0.5s cubic-bezier(.36, .07, .19, .97) both;
+        }
+
+        @keyframes shake {
+
+            10%,
+            90% {
+                transform: translate3d(-1px, 0, 0);
+            }
+
+            20%,
+            80% {
+                transform: translate3d(2px, 0, 0);
+            }
+
+            30%,
+            50%,
+            70% {
+                transform: translate3d(-4px, 0, 0);
+            }
+
+            40%,
+            60% {
+                transform: translate3d(4px, 0, 0);
+            }
+        }
+
+        .reveal {
+            opacity: 0;
+            transform: translateY(40px);
+            transition: all 1s ease;
+        }
+
+        .reveal.active {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        /* --- 细节控：滚动条与选中色 --- */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #fbcfe8;
+            border-radius: 3px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #f472b6;
+        }
+
+        ::selection {
+            background: #fce7f3;
+            color: #db2777;
+        }
+    </style>
+</head>
+
+<body class="bg-[#fdfbf7] antialiased">
+
+    <!-- 1. 登录入口 -->
+    <div id="login-screen">
+        <div class="login-box max-w-md w-full mx-4 text-center">
+            <div class="mb-10 relative">
+                <i id="lockIcon" class="fas fa-heart text-pink-400 text-6xl animate-bounce"></i>
+            </div>
+
+            <div class="relative mb-8 group">
+                <input type="password" id="passwordInput" placeholder="请输入密码"
+                    class="w-full px-6 py-4 rounded-full border-2 border-pink-100 bg-white/50 backdrop-blur-sm focus:border-pink-400 focus:outline-none text-center text-xl tracking-[0.3em] text-gray-600 transition glow-input font-mono">
+            </div>
+
+            <button onclick="checkPassword()"
+                class="w-full bg-gradient-to-r from-pink-400 to-pink-500 hover:from-pink-500 hover:to-pink-600 text-white font-bold py-4 px-8 rounded-full shadow-xl transition transform hover:scale-[1.02]">
+                解锁
+            </button>
+
+            <!-- 随机卖萌报错信息 -->
+            <p id="errorMsg"
+                class="text-pink-500 mt-6 font-serif font-bold h-6 transition-opacity duration-300 opacity-0">
+                <!-- JS 会填充这里 -->
+            </p>
+        </div>
+    </div>
+
+    <!-- 2. 背景 -->
+    <div class="animated-bg"></div>
+    <!-- 萤火虫将由JS生成 -->
+
+    <!-- 3. 主内容 (默认隐藏，JS 激活显示) -->
+    <div class="container mx-auto px-4 py-16 relative z-10 max-w-4xl" id="main-content"
+        style="opacity: 0; transition: opacity 1s;">
+
+        <!-- Header -->
+        <header class="text-center mb-24 reveal">
+            <p class="text-pink-600 font-bold tracking-[0.4em] text-xs uppercase mb-4">一周年纪念日</p>
+            <h1 class="text-5xl md:text-8xl font-art text-gradient-flow drop-shadow-lg mb-4">Loving Story</h1>
+            <p class="text-xl md:text-2xl text-white/90 font-light tracking-widest font-serif">Since 2025.02.08</p>
+        </header>
+
+        <!-- Timer -->
+        <section class="mb-32 reveal">
+            <div
+                class="bg-white/40 backdrop-blur-xl rounded-[2rem] p-10 md:p-14 shadow-2xl border border-white/50 text-center">
+                <h2 class="text-2xl text-gray-700 font-bold mb-10 font-serif">我们相爱的时间</h2>
+                <div class="grid grid-cols-4 gap-2 md:gap-8 divide-x divide-pink-200/50">
+                    <div class="group">
+                        <span id="days" class="block text-4xl md:text-6xl font-hand text-pink-600">0</span>
+                        <span class="text-xs text-gray-500 uppercase">Days</span>
+                    </div>
+                    <div><span id="hours" class="block text-4xl md:text-6xl font-hand text-pink-600">0</span><span
+                            class="text-xs text-gray-500 uppercase">Hr</span></div>
+                    <div><span id="minutes" class="block text-4xl md:text-6xl font-hand text-pink-600">0</span><span
+                            class="text-xs text-gray-500 uppercase">Min</span></div>
+                    <div><span id="seconds" class="block text-4xl md:text-6xl font-hand text-pink-600">0</span><span
+                            class="text-xs text-gray-500 uppercase">Sec</span></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Timeline: The Travel Log -->
+        <section class="mb-40 relative">
+            <div class="text-center mb-20 reveal">
+                <span class="text-pink-600 font-art text-5xl block mb-2">Our Journey</span>
+                <h2 class="text-3xl font-serif text-white font-bold drop-shadow-md">一起走过的路</h2>
+            </div>
+
+            <div class="timeline-container max-w-3xl mx-auto" id="timeline-list">
+                <!-- JS 会自动在这里生成卡片 -->
+            </div>
+        </section>
+
+        <!-- Map Summary -->
+        <section class="mb-40 reveal relative z-20">
+            <div
+                class="bg-white/90 backdrop-blur-md p-6 rounded-3xl shadow-xl transform rotate-1 hover:rotate-0 transition duration-500">
+                <div class="flex items-center justify-between mb-4 px-2">
+                    <h3 class="text-xl font-bold text-gray-700 font-serif">Our Footprints</h3>
+                    <span class="text-sm text-pink-500 font-hand text-xl">World Map</span>
+                </div>
+                <!-- 地图容器 -->
+                <div id="map"></div>
+                <p class="text-center text-gray-500 mt-4 text-sm font-serif italic">"世界很大，但有你在的地方就是家"</p>
+            </div>
+        </section>
+
+        <!-- 温馨页脚 -->
+        <footer class="text-center mt-20 mb-10 reveal">
+            <p class="text-white/70 font-art text-3xl mb-2">To be continued...</p>
+            <p class="text-white/50 text-sm font-serif">我们的故事，未完待续 💕</p>
+            <p class="text-white/30 text-xs mt-6">Made with ❤️ for You | 2026</p>
+        </footer>
+
+    </div>
+
+    <script>
+        // ================= 配置区域 =================
+        const startDate = new Date('2025-02-08T00:00:00');
+        const correctPassword = "031029"; // 🔐 密码
+
+        // 报错信息池
+        const errorMessages = [
+            "不对哦老婆，再想一想~",
+            "这都不知道？你完了！",
+        ];
+        // ===========================================
+
+        // --- 1. 登录逻辑 ---
+        function checkPassword() {
+            const input = document.getElementById('passwordInput');
+            const errorMsg = document.getElementById('errorMsg');
+            const loginScreen = document.getElementById('login-screen');
+            const lockIcon = document.getElementById('lockIcon');
+            const mainContent = document.getElementById('main-content');
+
+            if (input.value === correctPassword) {
+                // 成功：改变图标
+                lockIcon.classList.remove('fa-heart');
+                lockIcon.classList.add('fa-unlock-alt');
+                input.classList.remove('glow-input');
+                input.style.borderColor = "#4ade80"; // Green
+
+                // 🎉 惊喜时刻：撒花特效 (层级调高，防止被登录层遮挡)
+                confetti({
+                    zIndex: 10001, // 必须比登录层(10000)高
+                    particleCount: 150,
+                    spread: 70,
+                    origin: {
+                        y: 0.6
+                    },
+                    colors: ['#ec4899', '#fbcfe8', '#ffe4e6'] // 粉白配色
+                });
+
+                // 登录页淡出
+                loginScreen.style.opacity = '0';
+                loginScreen.style.filter = 'blur(20px)';
+
+                setTimeout(() => {
+                    loginScreen.remove(); // 移除登录页DOM
+                    // 显示主内容
+                    // 渲染时间轴
+                    renderTimeline();
+                    mainContent.style.opacity = '1';
+
+                    // 1. 强制回到顶部
+                    window.scrollTo(0, 0);
+
+                    // 初始化地图和滚动监听
+                    checkScroll();
+                    setTimeout(initMap, 500); // 稍微延迟一点确保容器就位
+                }, 1000);
+
+            } else {
+                // 失败：随机报错
+                const randomMsg = errorMessages[Math.floor(Math.random() * errorMessages.length)];
+                errorMsg.innerText = randomMsg;
+                errorMsg.style.opacity = '1';
+
+                const box = document.querySelector('.login-box');
+                box.classList.add('shake');
+                setTimeout(() => {
+                    box.classList.remove('shake');
+                    errorMsg.style.opacity = '0';
+                }, 2000);
+
+                input.value = '';
+                input.focus();
+            }
+        }
+
+        document.getElementById('passwordInput').addEventListener('keypress', function (e) {
+            if (e.key === 'Enter') checkPassword();
+        });
+
+        // --- 2. 核心数据与逻辑 ---
+
+        // 🌏 你的足迹数据 (改这里就行！)
+        // Tips: 经纬度可以去 Google Maps 或高德地图查
+        const journeyData = [
+            { date: "2025.03", title: "鑫鑫的生日", city: "珠海", lat: 22.2707, lng: 113.5767, img: "./images/1.jpg", text: "最好的生日礼物，就是你。" },
+            { date: "2025.04", title: "迪士尼", city: "上海", lat: 31.2304, lng: 121.4737, img: "./images/2.jpg", text: "和你回家的路，总是很短。" },
+            { date: "2025.05", title: "闪现", city: "南阳", lat: 32.9907, lng: 112.5283, img: "./images/3.jpg", text: "" },
+            { date: "2025.06", title: "悦榕庄", city: "重庆", lat: 29.5630, lng: 106.5516, img: "./images/4.jpg", text: "雾都再辣，也没你辣。" },
+            { date: "2025.07", title: "环球影城", city: "新加坡", lat: 1.3521, lng: 103.8198, img: "./images/5.jpg", text: "鱼尾狮见证了我们的夏天。" },
+            { date: "2025.08", title: "方特", city: "郑州", lat: 34.7466, lng: 113.6253, img: "./images/6.jpg", text: "二七塔下，人来人往，唯我不变。" },
+            { date: "2025.08", title: "1903", city: "青岛", lat: 36.0671, lng: 120.3826, img: "./images/7.jpg", text: "想把这片海，装进你的眼睛里。" },
+            { date: "2025.08", title: "大明湖", city: "济南", lat: 36.6512, lng: 117.1201, img: "./images/8.jpg", text: "大明湖畔，还好有你。" },
+            { date: "2025.09", title: "天府机场", city: "成都", lat: 30.5728, lng: 104.0668, img: "./images/9.jpg", text: "走在玉林路的小酒馆门口。" },
+            { date: "2025.10", title: "瑞瑞的生日", city: "珠海", lat: 22.2707, lng: 113.5767, img: "./images/10.jpg", text: "祝我的小公主，永远快乐。" },
+            { date: "2025.11", title: "浅草寺", city: "东京", lat: 35.6762, lng: 139.6503, img: "./images/11.jpg", text: "在涉谷十字路口，紧紧牵着你。" },
+            { date: "2025.12", title: "300天", city: "珠海", lat: 22.2707, lng: 113.5767, img: "./images/12.jpg", text: "不知不觉，已经这么久了。" },
+            { date: "2025.12", title: "迪士尼", city: "香港", lat: 22.3193, lng: 114.1694, img: "./images/13.jpg", text: "东方之珠再亮，也不如你。" },
+            { date: "2026.01", title: "昆明博物馆", city: "昆明", lat: 25.0560, lng: 102.7123, img: "./images/14.jpg", text: "我们的故事，未完待续..." },
+        ];
+
+        // --- 替换后的 renderTimeline 函数 (竖屏优先版) ---
+        function renderTimeline() {
+            const container = document.getElementById('timeline-list');
+            let html = '';
+
+            journeyData.forEach((item, index) => {
+                // 序号补零
+                const num = String(index + 1).padStart(2, '0');
+
+                html += `
+                <div class="travel-card flex flex-col md:flex-row reveal">
+                    <!-- 左侧：日期票根 -->
+                    <div class="ticket-stub bg-gray-50 p-6 flex flex-col justify-center items-center md:w-1/4 min-w-[120px] border-b md:border-b-0 md:border-r border-dashed border-gray-200">
+                        <div class="text-xl font-bold text-gray-400 font-mono">${item.date}</div>
+                        <div class="mt-2 text-pink-500 font-bold text-lg uppercase tracking-wider">${item.city}</div>
+                    </div>
+                    
+                    <!-- 右侧：内容区域 -->
+                    <div class="p-6 md:p-8 flex-1 bg-white">
+                        <!-- 
+                        核心修改在这里：
+                        1. h-[500px]: 强制把高度拉长，适合竖屏照片
+                        2. md:h-[600px]: 电脑屏幕上显示得更高
+                        -->
+                        <div class="h-[500px] md:h-[600px] rounded-xl overflow-hidden mb-6 relative group photo-frame shadow-md">
+                            
+                            <!-- 
+                            图片显示逻辑：
+                            1. object-cover: 填满整个框，不留白边
+                            2. object-top: 重点显示图片的上半部分（因为拍人像时，脸通常在上面，防止切掉头）
+                            -->
+                            <img src="${item.img}" 
+                                class="w-full h-full object-cover object-top transition duration-700 group-hover:scale-105"
+                                alt="${item.city}">
+                                
+                            <!-- 地点标签 -->
+                            <div class="absolute bottom-4 left-0 right-0 flex justify-center">
+                                <div class="bg-white/90 backdrop-blur-md px-4 py-2 rounded-full text-sm font-bold text-gray-700 shadow-lg border border-pink-100 flex items-center gap-2 transform transition group-hover:-translate-y-2">
+                                    <i class="fas fa-camera text-pink-500"></i> 
+                                    <span>${item.city} · ${item.title}</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- 文字描述 -->
+                        
+                    </div>
+                </div>
+                `;
+            });
+
+            container.innerHTML = html;
+        }
+
+        function initMap() {
+            // 中心点定位在中国 (大概位置)
+            const map = L.map('map').setView([32.0, 110.0], 4);
+
+            L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+                attribution: '&copy; OpenStreetMap &copy; CARTO',
+                subdomains: 'abcd',
+                maxZoom: 20
+            }).addTo(map);
+
+            const heartIcon = L.divIcon({
+                html: '<div style="font-size: 24px; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));">💕</div>',
+                className: 'heart-marker',
+                iconSize: [30, 30],
+                iconAnchor: [15, 15]
+            });
+
+            // 从 journeyData 读取坐标
+            // 过滤掉没有坐标的数据（防止报错）
+            const validPoints = journeyData.filter(p => p.lat && p.lng);
+
+            if (validPoints.length > 0) {
+                // 用于去重的Set - 同一城市只显示一个标签
+                const shownCities = new Set();
+
+                // 1. 画标记 (改为呼吸光圈)
+                validPoints.forEach(p => {
+                    const pulseIcon = L.divIcon({
+                        className: 'pulse-icon',
+                        iconSize: [12, 12],
+                        iconAnchor: [6, 6] // 居中
+                    });
+
+                    const marker = L.marker([p.lat, p.lng], { icon: pulseIcon }).addTo(map);
+
+                    // 只有第一次出现的城市才显示标签
+                    if (!shownCities.has(p.city)) {
+                        shownCities.add(p.city);
+
+                        // 特殊处理：香港标签往右显示，避免和珠海重叠
+                        let direction = 'top';
+                        let offset = [0, -12];
+                        if (p.city === '香港') {
+                            direction = 'right';
+                            offset = [12, 0];
+                        }
+
+                        marker.bindTooltip(p.city, {
+                            direction: direction,
+                            permanent: true,
+                            className: 'city-label',
+                            offset: offset
+                        });
+                    }
+                });
+
+                // 2. 画轨迹线
+                const latlngs = validPoints.map(p => [p.lat, p.lng]);
+                const polyline = L.polyline(latlngs, {
+                    color: '#be185d', // 颜色加深，与圆点一致
+                    weight: 2, // 线细一点更精致
+                    dashArray: '5, 10', // 虚线间距
+                    opacity: 0.6,
+                    smoothFactor: 1
+                }).addTo(map);
+
+                // 自动调整视野以包含所有点
+                map.fitBounds(polyline.getBounds(), { padding: [50, 50] });
+            }
+        }
+
+        // --- 3. 计时器 ---
+        function updateTimer() {
+            const now = new Date();
+            const diff = now - startDate;
+            if (diff < 0) return;
+
+            const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+            const hours = Math.floor((diff / (1000 * 60 * 60)) % 24);
+            const minutes = Math.floor((diff / 1000 / 60) % 60);
+            const seconds = Math.floor((diff / 1000) % 60);
+
+            document.getElementById('days').innerText = String(days).padStart(2, '0');
+            document.getElementById('hours').innerText = String(hours).padStart(2, '0');
+            document.getElementById('minutes').innerText = String(minutes).padStart(2, '0');
+            document.getElementById('seconds').innerText = String(seconds).padStart(2, '0');
+        }
+        setInterval(updateTimer, 1000);
+        updateTimer();
+
+        // --- 4. 滚动显影 ---
+        function checkScroll() {
+            const reveals = document.querySelectorAll('.reveal');
+            const windowHeight = window.innerHeight;
+            reveals.forEach(reveal => {
+                const revealTop = reveal.getBoundingClientRect().top;
+                if (revealTop < windowHeight - 100) {
+                    reveal.classList.add('active');
+                }
+            });
+        }
+        window.addEventListener('scroll', checkScroll);
+
+        // --- 5. 萤火虫背景 ---
+        function createFireflies() {
+            const bg = document.querySelector('.animated-bg');
+            for (let i = 0; i < 20; i++) {
+                const fly = document.createElement('div');
+                fly.style.position = 'fixed';
+                fly.style.bottom = '-10px';
+                fly.style.left = Math.random() * 100 + 'vw';
+                fly.style.width = Math.random() * 5 + 2 + 'px';
+                fly.style.height = fly.style.width;
+                fly.style.backgroundColor = '#fff';
+                fly.style.borderRadius = '50%';
+                fly.style.opacity = Math.random();
+                fly.style.boxShadow = '0 0 10px 2px rgba(255,255,255,0.4)';
+                fly.style.animation = `fly ${Math.random() * 10 + 10}s linear infinite`;
+                fly.style.pointerEvents = 'none';
+                bg.appendChild(fly);
+            }
+        }
+
+        const styleSheet = document.createElement("style");
+        styleSheet.innerText = `
+            @keyframes fly {
+                0% { transform: translateY(0) scale(1); opacity: 0; }
+                50% { opacity: 0.8; }
+                100% { transform: translateY(-110vh) scale(0); opacity: 0; }
+            }
+        `;
+        document.head.appendChild(styleSheet);
+
+
+        createFireflies();
+
+        // --- 6. 鼠标/触控爱心拖尾 ---
+        let lastTime = 0;
+
+        function createHeartTrail(x, y) {
+            const now = Date.now();
+            if (now - lastTime < 50) return; // 节流，防止生成太多卡顿
+            lastTime = now;
+
+            const heart = document.createElement('div');
+            heart.classList.add('heart-trail');
+            heart.innerHTML = '❤';
+
+            // 随机大小和颜色
+            const size = Math.random() * 15 + 10;
+            const colors = ['#ec4899', '#f472b6', '#fbcfe8', '#ff6b81'];
+
+            heart.style.left = x + 'px';
+            heart.style.top = y + 'px';
+            heart.style.fontSize = size + 'px';
+            heart.style.color = colors[Math.floor(Math.random() * colors.length)];
+
+            document.body.appendChild(heart);
+
+            // 动画结束后移除
+            setTimeout(() => {
+                heart.remove();
+            }, 1000);
+        }
+
+        // 桌面端鼠标移动
+        document.addEventListener('mousemove', function (e) {
+            createHeartTrail(e.clientX, e.clientY);
+        });
+
+        // 移动端触控滑动
+        document.addEventListener('touchmove', function (e) {
+            const touch = e.touches[0];
+            createHeartTrail(touch.clientX, touch.clientY);
+        });
+
+    </script>
+</body>
+
+</html>
